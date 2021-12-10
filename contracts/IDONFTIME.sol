@@ -75,7 +75,6 @@ contract IDO is Ownable, Pausable {
 
         _contractStarted = true;
         _startDate = (block.timestamp - (block.timestamp % 1 days)) + 10 hours;
-        _publicSale.unlockStartDate = _startDate + 6 days;
         transferTokensToContract(initialSupply);
         _unpause();
     }
@@ -86,6 +85,7 @@ contract IDO is Ownable, Pausable {
     Share public _teamShare;
     PublicSale public _publicSale;
     bool private _contractStarted;
+    bool private _publicSaleEnded;
     mapping (address => PSBuyer) psBuyers;
 
     // <================================ EXTERNAL FUNCTIONS ================================>
@@ -95,6 +95,7 @@ contract IDO is Ownable, Pausable {
     whenNotPaused
     returns(bool) {
         address buyer = _msgSender();
+        require(!_publicSaleEnded, "IDO: Public sale has already finished");
         if(!isPublicSaleBuyer(buyer)) {
             PSBuyer storage psBuyer = psBuyers[buyer];
             psBuyer.buyerAddress = buyer;
@@ -121,10 +122,11 @@ contract IDO is Ownable, Pausable {
     whenNotPaused
     returns(bool) {
         address buyer = _msgSender();
+        uint256 monthsSinceDate = _monthsSinceDate(_publicSale.unlockStartDate);
+        require(monthsSinceDate > 0, "IDO: Can not withdraw balance yet");
         require(buyer != address(0), "IDO: Token issue to Zero address is prohibited");
         require(isPublicSaleBuyer(buyer), "IDO: The user hasn't participated in Public Sale or has already withdrawn all his balance");
         PSBuyer memory psBuyer = psBuyers[buyer];
-        uint256 monthsSinceDate = _monthsSinceDate(_publicSale.unlockStartDate);
         require(psBuyer.lastWithdraw < PUBLIC_LOCK_DURATION_IN_MONTHS, "IDO: Buyer has already withdrawn all available unlocked tokens");
         require(monthsSinceDate != psBuyer.lastWithdraw, "IDO: Buyer has already withdrawn tokens this month");
         uint256 unlockForMonths = monthsSinceDate - psBuyer.lastWithdraw;
@@ -154,6 +156,13 @@ contract IDO is Ownable, Pausable {
     function pauseContract() external onlyOwner whenNotPaused
     {
         _pause();
+    }
+
+    function endPublicSale() external onlyOwner whenNotPaused 
+    {
+
+        _publicSale.unlockStartDate = _startDate + _daysSinceDate(_startDate) + 1 days;
+        _publicSaleEnded = true;
     }
 
     function unPauseContract() external onlyOwner whenPaused
@@ -210,6 +219,10 @@ contract IDO is Ownable, Pausable {
 
     function _monthsSinceDate(uint256 _timestamp) private view returns(uint256){
         return  (block.timestamp - _timestamp) / 30 days;
+    }
+
+    function _daysSinceDate(uint256 _timestamp) private view returns(uint256){
+        return  (block.timestamp - _timestamp) / 1 days ;
     }
 
     function getTokenSupply() external view returns(uint256) {
