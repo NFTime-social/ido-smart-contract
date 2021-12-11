@@ -86,7 +86,7 @@ contract IDO is Ownable, Pausable {
     PublicSale public _publicSale;
     bool private _contractStarted;
     bool private _publicSaleEnded;
-    mapping (address => PSBuyer) psBuyers;
+    mapping (address => PSBuyer) private psBuyers;
 
     // <================================ EXTERNAL FUNCTIONS ================================>
 
@@ -227,6 +227,22 @@ contract IDO is Ownable, Pausable {
     }
 
     function getTokenSupply() external view returns(uint256) {
+        return _publicSale.supply;
+    }
+
+    function getBuyerLimit(address buyer) external view returns(uint256){
+        return psBuyers[buyer].busdLimit;
+    }
+
+    function getBuyerLockedBalance(address buyer) external view returns(uint256){
+        return psBuyers[buyer].balance;
+    }
+
+    function getBuyerLastWithdraw(address buyer) external view returns(uint256){
+        return psBuyers[buyer].lastWithdraw;
+    }
+
+    function getPublicSaleLeftSupply() external view returns(uint256){
         return _publicSale.supply;
     }
 
