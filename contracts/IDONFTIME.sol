@@ -226,10 +226,6 @@ contract IDO is Ownable, Pausable {
         return  (block.timestamp - _timestamp) / 1 days ;
     }
 
-    function getTokenSupply() external view returns(uint256) {
-        return _publicSale.supply;
-    }
-
     function getBuyerLimit(address buyer) external view returns(uint256){
         return psBuyers[buyer].busdLimit;
     }
