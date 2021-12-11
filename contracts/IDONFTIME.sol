@@ -122,6 +122,7 @@ contract IDO is Ownable, Pausable {
     whenNotPaused
     returns(bool) {
         address buyer = _msgSender();
+        require(_publicSaleEnded, "IDO: Can not withdraw balance yet. Public Sale is not over yet");
         uint256 monthsSinceDate = _monthsSinceDate(_publicSale.unlockStartDate);
         require(monthsSinceDate > 0, "IDO: Can not withdraw balance yet");
         require(buyer != address(0), "IDO: Token issue to Zero address is prohibited");
