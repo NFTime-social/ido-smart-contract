@@ -247,7 +247,8 @@ contract IDO is Ownable, Pausable {
     }
 
     function isTokensUnlockActive() external view returns(bool) {
-        return _publicSaleEnded;
+        uint256 monthsSinceDate = _monthsSinceDate(_publicSale.unlockStartDate);
+        return monthsSinceDate > 0 && _publicSaleEnded;
     }
 
     function getTokenPrice() public view returns(uint256) {
