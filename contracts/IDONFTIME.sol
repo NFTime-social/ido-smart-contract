@@ -29,7 +29,6 @@ contract IDO is Ownable, Pausable {
 
     // PSBuyer stands for Public Sale Buyer
     struct PSBuyer {
-        address buyerAddress;
         uint256 lastWithdraw;
         uint256 initialTotalBalance;
         uint256 balance;
@@ -65,7 +64,6 @@ contract IDO is Ownable, Pausable {
         onlyOwner
         contractNotStarted
     {
-        require(_contractStarted == false, "IDO: The IDO contract has been already initialized");
         uint256 totalSupply = _nftm.totalSupply();
         uint256 totalPercentage = TEAM_PERCENTAGE + PUBLIC_PERCENTAGE;
         uint256 initialSupply = (totalSupply * totalPercentage) / 100;
@@ -98,14 +96,12 @@ contract IDO is Ownable, Pausable {
         require(!_publicSaleEnded, "IDO: Public sale has already finished");
         if(!isPublicSaleBuyer(buyer)) {
             PSBuyer storage psBuyer = psBuyers[buyer];
-            psBuyer.buyerAddress = buyer;
             psBuyer.busdLimit = to18Decimals(500);
         }
         require(buyer != address(0), "IDO: Token issue to Zero address is prohibited");
         require(busdAmount > 0, "IDO: Provided BUSD amount must be higher than 0");
         require(_publicSale.supply > 0, "IDO: There are no public tokens left available for sale");
         require(busdAmount <= psBuyers[buyer].busdLimit, "IDO: The Provided BUSD amount exceeds allowed spend limit");
-        require(psBuyers[buyer].busdLimit != 0, "IDO: This address has already purchased tokens for 500 BUSD");
         uint256 nftmPrice = getTokenPrice();
         uint256 tokensAmountToIssue = busdAmount / nftmPrice; // The total number of full tokens that will be issued. 1 Full NFTM token = 1000 tokens in full decimal precision
         require(tokensAmountToIssue > 0, "IDO: Provided BUSD amount is not sufficient to buy even one NFTM token");
@@ -127,7 +123,7 @@ contract IDO is Ownable, Pausable {
         require(monthsSinceDate > 0, "IDO: Can not withdraw balance yet");
         require(buyer != address(0), "IDO: Token issue to Zero address is prohibited");
         require(isPublicSaleBuyer(buyer), "IDO: The user hasn't participated in Public Sale or has already withdrawn all his balance");
-        PSBuyer memory psBuyer = psBuyers[buyer];
+        PSBuyer storage psBuyer = psBuyers[buyer];
         require(psBuyer.lastWithdraw < PUBLIC_LOCK_DURATION_IN_MONTHS, "IDO: Buyer has already withdrawn all available unlocked tokens");
         require(monthsSinceDate != psBuyer.lastWithdraw, "IDO: Buyer has already withdrawn tokens this month");
         uint256 unlockForMonths = monthsSinceDate - psBuyer.lastWithdraw;
@@ -138,8 +134,8 @@ contract IDO is Ownable, Pausable {
             _removePublicSaleBuyer(buyer);
         } else {
             nftmToUnlock = psBuyer.initialTotalBalance * (PUBLIC_UNLOCK_PER_MONTH_PERCENTAGE * unlockForMonths) / 100;
-            psBuyers[buyer].balance -= nftmToUnlock;
-            psBuyers[buyer].lastWithdraw = monthsSinceDate;
+            psBuyer.balance -= nftmToUnlock;
+            psBuyer.lastWithdraw = monthsSinceDate;
         }
 
         _nftm.safeTransfer(buyer, nftmToUnlock);
@@ -268,8 +264,6 @@ contract IDO is Ownable, Pausable {
     }
     
     function _issueTokens(address buyer, uint256 busdToPay, uint256 nftmToIssue) private returns(bool) {
-        require(_busd.allowance(buyer, address(this)) >= busdToPay, "IDO: Not enough allowance to perform transfer. Please be sure to approve sufficient tokens amount");
-        require(_busd.balanceOf(buyer) >= busdToPay, "IDO: Not enough BUSD available in buyer's balance. Please be sure to provide sufficient BUSD amount");
         uint256 nftmToUnlock = (nftmToIssue * PUBLIC_IMMEDIATE_UNLOCK_PERCENTAGE) / 100;
         
         _busd.safeTransferFrom(buyer, address(this), busdToPay);
@@ -277,7 +271,6 @@ contract IDO is Ownable, Pausable {
         _publicSale.supply -= nftmToIssue;
 
         PSBuyer storage psBuyer = psBuyers[buyer];
-        psBuyer.buyerAddress = buyer;
         psBuyer.initialTotalBalance += nftmToIssue;
         psBuyer.balance += nftmToIssue - nftmToUnlock;
 
