@@ -84,8 +84,8 @@ contract IDO is Ownable, Pausable {
     uint256 public _startDate;
     Share public _teamShare;
     PublicSale public _publicSale;
-    bool private _contractStarted;
-    bool private _publicSaleEnded;
+    bool public _contractStarted; // true when contract has been initialized
+    bool public _publicSaleEnded; // true if ended and false if still active
     mapping (address => PSBuyer) private psBuyers;
 
     // <================================ EXTERNAL FUNCTIONS ================================>
@@ -240,6 +240,14 @@ contract IDO is Ownable, Pausable {
 
     function getPublicSaleLeftSupply() external view returns(uint256){
         return _publicSale.supply;
+    }
+
+    function isPublicSaleActive() external view returns(bool) {
+        return !_publicSaleEnded;
+    }
+
+    function isTokensUnlockActive() external view returns(bool) {
+        return _publicSaleEnded;
     }
 
     function getTokenPrice() public view returns(uint256) {
