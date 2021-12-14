@@ -157,8 +157,7 @@ contract IDO is Ownable, Pausable {
 
     function endPublicSale() external onlyOwner whenNotPaused 
     {
-        _publicSale.unlockStartDate = _startDate + (_daysSinceDate(_startDate) * 1 days) + 1 days;
-        _publicSaleEnded = true;
+        _endPublicSale();
     }
 
     function unPauseContract() external onlyOwner whenPaused
@@ -274,6 +273,9 @@ contract IDO is Ownable, Pausable {
         _busd.safeTransferFrom(buyer, address(this), busdToPay);
         _nftm.safeTransfer(buyer, nftmToUnlock);
         _publicSale.supply -= nftmToIssue;
+        if(_publicSale.supply == 0) {
+            _endPublicSale();
+        }
 
         PSBuyer storage psBuyer = psBuyers[buyer];
         psBuyer.initialTotalBalance += nftmToIssue;
@@ -281,6 +283,12 @@ contract IDO is Ownable, Pausable {
 
         emit TokensPurchased(buyer, busdToPay, nftmToIssue);
         return true;
+    }
+
+    function _endPublicSale() private {
+        require(!_publicSaleEnded, "IDO: Public sale has already finished");
+        _publicSale.unlockStartDate = _startDate + (_daysSinceDate(_startDate) * 1 days) + 1 days;
+        _publicSaleEnded = true;
     }
 
     function _removePublicSaleBuyer(address buyer) private {
