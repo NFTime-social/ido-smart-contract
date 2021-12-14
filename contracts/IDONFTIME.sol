@@ -96,17 +96,17 @@ contract IDO is Ownable, Pausable {
         require(!_publicSaleEnded, "IDO: Public sale has already finished");
         if(!isPublicSaleBuyer(buyer)) {
             PSBuyer storage psBuyer = psBuyers[buyer];
-            psBuyer.busdLimit = to18Decimals(500);
+            psBuyer.busdLimit = 500e18; //to18Decimals(500);
         }
         require(buyer != address(0), "IDO: Token issue to Zero address is prohibited");
         require(busdAmount > 0, "IDO: Provided BUSD amount must be higher than 0");
-        require(_publicSale.supply > 0, "IDO: There are no public tokens left available for sale");
         require(busdAmount <= psBuyers[buyer].busdLimit, "IDO: The Provided BUSD amount exceeds allowed spend limit");
         uint256 nftmPrice = getTokenPrice();
         uint256 tokensAmountToIssue = busdAmount / nftmPrice; // The total number of full tokens that will be issued. 1 Full NFTM token = 1000 tokens in full decimal precision
         require(tokensAmountToIssue > 0, "IDO: Provided BUSD amount is not sufficient to buy even one NFTM token");
         uint256 totalPrice = tokensAmountToIssue * nftmPrice; //Total price in BUSD to buy specific number of NFTM tokens
         uint256 megaTokensToIssue = toMegaToken(tokensAmountToIssue); //Total amount of NFTM tokens (in full decimal precision) to issue
+        require(_publicSale.supply >= megaTokensToIssue, "IDO: There are not enough public sale tokens available to be issued for provided BUSD amount");
 
         require(_issueTokens(buyer, totalPrice, megaTokensToIssue), "IDO: Token transfer failed");
         psBuyers[buyer].busdLimit -= totalPrice;
@@ -128,7 +128,7 @@ contract IDO is Ownable, Pausable {
         require(monthsSinceDate != psBuyer.lastWithdraw, "IDO: Buyer has already withdrawn tokens this month");
         uint256 unlockForMonths = monthsSinceDate - psBuyer.lastWithdraw;
         uint256 nftmToUnlock;
-        if(monthsSinceDate >= 3)
+        if(monthsSinceDate >= PUBLIC_LOCK_DURATION_IN_MONTHS)
         {
             nftmToUnlock = psBuyer.balance;
             _removePublicSaleBuyer(buyer);
@@ -157,8 +157,7 @@ contract IDO is Ownable, Pausable {
 
     function endPublicSale() external onlyOwner whenNotPaused 
     {
-
-        _publicSale.unlockStartDate = _startDate + _daysSinceDate(_startDate) + 1 days;
+        _publicSale.unlockStartDate = _startDate + (_daysSinceDate(_startDate) * 1 days) + 1 days;
         _publicSaleEnded = true;
     }
 
@@ -193,6 +192,7 @@ contract IDO is Ownable, Pausable {
         address owner = _msgSender();
         require(_publicSale.supply > 0, "IDO: Nothing to withdraw. Ido contract's BUSD balance is empty");
         _nftm.safeTransfer(owner, _publicSale.supply);
+        _publicSale.supply = 0;
         return true;
     }
 
@@ -202,6 +202,7 @@ contract IDO is Ownable, Pausable {
         uint256 balanceNFTM = _nftm.balanceOf(address(this));
         if(balanceBUSD > 0) _busd.safeTransfer(owner, balanceBUSD);
         if(balanceNFTM > 0)  _nftm.safeTransfer(owner, balanceNFTM);
+        _pause();
         selfdestruct(payable(owner));
     }
 
@@ -223,7 +224,7 @@ contract IDO is Ownable, Pausable {
     }
 
     function getBuyerLimit(address buyer) external view returns(uint256){
-        return psBuyers[buyer].busdLimit;
+        return isPublicSaleBuyer(buyer) ? psBuyers[buyer].busdLimit : 500e18;
     }
 
     function getBuyerLockedBalance(address buyer) external view returns(uint256){
@@ -250,13 +251,13 @@ contract IDO is Ownable, Pausable {
     function getTokenPrice() public view returns(uint256) {
         uint256 price = 90000000000000000; // 0,09$
         uint256 supply = _publicSale.supply;
-        if(supply <= toMegaToken(12000000)) {
+        if(supply <= toMegaToken(12000000) && supply > toMegaToken(9000000)) {
             price = 95000000000000000; //0,095$
-        } else if (supply <= toMegaToken(9000000)) {
+        } else if (supply <= toMegaToken(9000000) && supply > toMegaToken(6000000)) {
             price = 100000000000000000; //0,10$
-        } else if (supply <= toMegaToken(6000000)) {
+        } else if (supply <= toMegaToken(6000000) && supply > toMegaToken(3000000)) {
             price = 110000000000000000; //0,11$
-        } else if (supply <= toMegaToken(3000000)) {
+        } else if (supply <= toMegaToken(3000000) && supply >= toMegaToken(0)) {
             price = 120000000000000000; //0,12$
         }
 
@@ -290,10 +291,6 @@ contract IDO is Ownable, Pausable {
 
     function toMegaToken(uint256 amount) internal pure returns(uint256) {
         return amount * (10 ** decimals());
-    }
-
-    function to18Decimals(uint256 amount) internal pure returns(uint256) {
-        return amount * (10 ** 18);
     }
 
     function decimals() internal pure returns(uint8) {
