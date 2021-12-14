@@ -96,7 +96,7 @@ contract IDO is Ownable, Pausable {
         require(!_publicSaleEnded, "IDO: Public sale has already finished");
         if(!isPublicSaleBuyer(buyer)) {
             PSBuyer storage psBuyer = psBuyers[buyer];
-            psBuyer.busdLimit = 500e18; //to18Decimals(500);
+            psBuyer.busdLimit = 500e18;
         }
         require(buyer != address(0), "IDO: Token issue to Zero address is prohibited");
         require(busdAmount > 0, "IDO: Provided BUSD amount must be higher than 0");
@@ -220,7 +220,7 @@ contract IDO is Ownable, Pausable {
     }
 
     function _daysSinceDate(uint256 _timestamp) private view returns(uint256){
-        return  (block.timestamp - _timestamp) / 1 days ;
+        return  (block.timestamp - _timestamp) / 1 days;
     }
 
     function getBuyerLimit(address buyer) external view returns(uint256){
@@ -237,6 +237,10 @@ contract IDO is Ownable, Pausable {
 
     function getPublicSaleLeftSupply() external view returns(uint256){
         return _publicSale.supply;
+    }
+
+    function getCurrentMonth() external view returns(uint256) {
+        return _publicSale.unlockStartDate == 0 ? 0 : _monthsSinceDate(_publicSale.unlockStartDate);
     }
 
     function isPublicSaleActive() external view returns(bool) {
