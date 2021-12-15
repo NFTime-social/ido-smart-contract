@@ -189,6 +189,7 @@ contract IDO is Ownable, Pausable {
 
     function withdrawLeftPublicTokens() external onlyOwner returns (bool) {
         address owner = _msgSender();
+        require(_publicSaleEnded, "IDO: Can not withdraw. Public sale is still active");
         require(_publicSale.supply > 0, "IDO: Nothing to withdraw. Ido contract's BUSD balance is empty");
         _nftm.safeTransfer(owner, _publicSale.supply);
         _publicSale.supply = 0;
